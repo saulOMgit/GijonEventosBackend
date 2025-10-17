@@ -74,7 +74,8 @@ public class SecurityConfiguration {
         CorsConfiguration configuration = new CorsConfiguration();
 
         // Cambia la URL si tu frontend corre en otro puerto o dominio
-        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+        // configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+        configuration.setAllowedOrigins(List.of("http://localhost:3000"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true); // Necesario si usas cookies o auth headers
