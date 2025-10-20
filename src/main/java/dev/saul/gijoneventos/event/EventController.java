@@ -1,8 +1,8 @@
 package dev.saul.gijoneventos.event;
 
-import dev.saul.gijoneventos.user.UserDTOResponse;
 import dev.saul.gijoneventos.user.UserEntity;
 import dev.saul.gijoneventos.user.UserRepository;
+import dev.saul.gijoneventos.user.UserDTOResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -25,20 +25,9 @@ public class EventController {
 
     @GetMapping
     public ResponseEntity<List<EventDTOResponse>> getEvents(@RequestParam(required = false) EventFilter filter, Authentication authentication) {
-        List<EventEntity> events = eventService.findAll();
-        if (filter != null && authentication != null) {
-            UserEntity user = userRepository.findByUsername(authentication.getName())
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
-            events = switch (filter) {
-                case ATTENDING -> events.stream()
-                    .filter(e -> e.getAttendees().contains(user))
-                    .collect(Collectors.toList());
-                case ORGANIZED -> events.stream()
-                    .filter(e -> e.getOrganizer().getId().equals(user.getId()))
-                    .collect(Collectors.toList());
-                case ALL -> events;
-            };
-        }
+        UserEntity user = userRepository.findByUsername(authentication.getName())
+            .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+        List<EventEntity> events = eventService.findAll(filter, user);
         List<EventDTOResponse> response = events.stream().map(this::toDTOResponse).collect(Collectors.toList());
         return ResponseEntity.ok(response);
     }
@@ -55,10 +44,11 @@ public class EventController {
     public ResponseEntity<EventDTOResponse> updateEvent(@PathVariable Long id, @Valid @RequestBody EventDTORequest dto, Authentication authentication) {
         UserEntity user = userRepository.findByUsername(authentication.getName())
             .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
-        EventEntity event = eventService.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Evento no encontrado"));
-        if (!event.getOrganizer().getId().equals(user.getId())) {
-            throw new IllegalStateException("Solo el organizador puede editar el evento");
+        EventEntity event = eventService.findById(id); // findById lanza excepción si no encuentra
+        boolean isAdmin = authentication.getAuthorities().stream()
+            .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+        if (!event.getOrganizer().getId().equals(user.getId()) && !isAdmin) {
+            throw new IllegalStateException("Solo el organizador o un administrador puede editar el evento");
         }
         EventEntity updated = eventService.updateEvent(id, dto);
         return ResponseEntity.ok(toDTOResponse(updated));
@@ -84,10 +74,11 @@ public class EventController {
     public ResponseEntity<Void> deleteEvent(@PathVariable Long id, Authentication authentication) {
         UserEntity user = userRepository.findByUsername(authentication.getName())
             .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
-        EventEntity event = eventService.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Evento no encontrado"));
-        if (!event.getOrganizer().getId().equals(user.getId())) {
-            throw new IllegalStateException("Solo el organizador puede eliminar el evento");
+        EventEntity event = eventService.findById(id); // findById lanza excepción si no encuentra
+        boolean isAdmin = authentication.getAuthorities().stream()
+            .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+        if (!event.getOrganizer().getId().equals(user.getId()) && !isAdmin) {
+            throw new IllegalStateException("Solo el organizador o un administrador puede eliminar el evento");
         }
         eventService.deleteEvent(id);
         return ResponseEntity.ok().build();
@@ -105,7 +96,8 @@ public class EventController {
                 event.getOrganizer().getFullName(),
                 event.getOrganizer().getUsername(),
                 event.getOrganizer().getEmail(),
-                event.getOrganizer().getPhone()
+                event.getOrganizer().getPhone(),
+                "" // Valor por defecto para role
             ))
             .attendees(event.getAttendees().stream().map(UserEntity::getId).collect(Collectors.toSet()))
             .maxAttendees(event.getMaxAttendees())

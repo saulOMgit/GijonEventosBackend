@@ -2,13 +2,11 @@ package dev.saul.gijoneventos.event;
 
 import dev.saul.gijoneventos.user.UserEntity;
 import dev.saul.gijoneventos.user.UserRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class EventService {
@@ -21,43 +19,47 @@ public class EventService {
         this.userRepository = userRepository;
     }
 
-    @Transactional
-    public EventEntity save(EventEntity event) {
+    public List<EventEntity> findAll(EventFilter filter, UserEntity user) {
+        if (filter == null || filter == EventFilter.ALL) {
+            return eventRepository.findAll();
+        }
+        return switch (filter) {
+            case ATTENDING -> eventRepository.findByAttendeesContaining(user);
+            case ORGANIZED -> eventRepository.findByOrganizer(user);
+            default -> eventRepository.findAll();
+        };
+    }
+
+    public EventEntity findById(Long id) {
+        return eventRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Evento no encontrado con ID: " + id));
+    }
+
+    public EventEntity createFromDTO(EventDTORequest dto, UserEntity organizer) {
+        EventEntity event = new EventEntity();
+        event.setTitle(dto.getTitle());
+        event.setDescription(dto.getDescription());
+        event.setDate(LocalDateTime.parse(dto.getDate())); // Convertir String a LocalDateTime
+        event.setLocation(dto.getLocation());
+        event.setOrganizer(organizer);
+        event.setMaxAttendees(dto.getMaxAttendees());
         return eventRepository.save(event);
     }
 
-    @Transactional
-    public EventEntity createFromDTO(EventDTORequest dto, UserEntity organizer) {
-        LocalDateTime parsedDate = LocalDateTime.parse(dto.getDate(), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        return save(EventEntity.builder()
-            .title(dto.getTitle())
-            .description(dto.getDescription())
-            .date(parsedDate)
-            .location(dto.getLocation())
-            .organizer(organizer)
-            .maxAttendees(dto.getMaxAttendees())
-            .build());
-    }
-
-    @Transactional
-    public EventEntity updateEvent(Long eventId, EventDTORequest dto) {
-        EventEntity event = eventRepository.findById(eventId)
-            .orElseThrow(() -> new IllegalArgumentException("Evento no encontrado"));
-        LocalDateTime parsedDate = LocalDateTime.parse(dto.getDate(), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+    public EventEntity updateEvent(Long id, EventDTORequest dto) {
+        EventEntity event = findById(id);
         event.setTitle(dto.getTitle());
         event.setDescription(dto.getDescription());
-        event.setDate(parsedDate);
+        event.setDate(LocalDateTime.parse(dto.getDate())); // Convertir String a LocalDateTime
         event.setLocation(dto.getLocation());
         event.setMaxAttendees(dto.getMaxAttendees());
-        return save(event);
+        return eventRepository.save(event);
     }
 
-    @Transactional
-    public void joinEvent(Long eventId, Long userId) {
-        EventEntity event = eventRepository.findById(eventId)
-            .orElseThrow(() -> new IllegalArgumentException("Evento no encontrado"));
+    public void joinEvent(Long id, Long userId) {
+        EventEntity event = findById(id);
         UserEntity user = userRepository.findById(userId)
-            .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+            .orElseThrow(() -> new EntityNotFoundException("Usuario no encontrado con ID: " + userId));
         if (event.getAttendees().size() >= event.getMaxAttendees()) {
             throw new IllegalStateException("El evento está completo");
         }
@@ -65,26 +67,16 @@ public class EventService {
         eventRepository.save(event);
     }
 
-    @Transactional
-    public void leaveEvent(Long eventId, Long userId) {
-        EventEntity event = eventRepository.findById(eventId)
-            .orElseThrow(() -> new IllegalArgumentException("Evento no encontrado"));
+    public void leaveEvent(Long id, Long userId) {
+        EventEntity event = findById(id);
         UserEntity user = userRepository.findById(userId)
-            .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+            .orElseThrow(() -> new EntityNotFoundException("Usuario no encontrado con ID: " + userId));
         event.getAttendees().remove(user);
         eventRepository.save(event);
     }
 
-    @Transactional
-    public void deleteEvent(Long eventId) {
-        eventRepository.deleteById(eventId);
-    }
-
-    public List<EventEntity> findAll() {
-        return eventRepository.findAll();
-    }
-
-    public Optional<EventEntity> findById(Long id) {
-        return eventRepository.findById(id);
+    public void deleteEvent(Long id) {
+        EventEntity event = findById(id);
+        eventRepository.delete(event);
     }
 }
