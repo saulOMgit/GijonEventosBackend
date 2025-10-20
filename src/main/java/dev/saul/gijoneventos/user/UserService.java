@@ -4,7 +4,6 @@ import dev.saul.gijoneventos.role.RoleEntity;
 import dev.saul.gijoneventos.role.RoleRepository; // Necesitarás este repositorio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import java.util.Optional;
 import java.util.Set;
 
 @Service
