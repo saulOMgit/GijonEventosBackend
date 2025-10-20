@@ -39,10 +39,14 @@ public class EventService {
         EventEntity event = new EventEntity();
         event.setTitle(dto.getTitle());
         event.setDescription(dto.getDescription());
-        event.setDate(LocalDateTime.parse(dto.getDate())); // Convertir String a LocalDateTime
+        event.setDate(LocalDateTime.parse(dto.getDate()));
         event.setLocation(dto.getLocation());
         event.setOrganizer(organizer);
         event.setMaxAttendees(dto.getMaxAttendees());
+        
+        // Añadir automáticamente al organizador como asistente
+        event.getAttendees().add(organizer);
+        
         return eventRepository.save(event);
     }
 
@@ -50,7 +54,7 @@ public class EventService {
         EventEntity event = findById(id);
         event.setTitle(dto.getTitle());
         event.setDescription(dto.getDescription());
-        event.setDate(LocalDateTime.parse(dto.getDate())); // Convertir String a LocalDateTime
+        event.setDate(LocalDateTime.parse(dto.getDate()));
         event.setLocation(dto.getLocation());
         event.setMaxAttendees(dto.getMaxAttendees());
         return eventRepository.save(event);
