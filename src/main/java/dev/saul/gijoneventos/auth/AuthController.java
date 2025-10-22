@@ -24,6 +24,10 @@ public class AuthController {
         
         // Buscar el usuario en la base de datos
         UserEntity user = userService.findByUsername(username);
+        String role = authentication.getAuthorities().stream()
+            .map(Object::toString)
+            .findFirst()
+            .orElse("ROLE_USER");
         
         // Crear DTO con los campos esperados por el frontend
         UserDTOResponse userDTO = new UserDTOResponse(
@@ -31,7 +35,8 @@ public class AuthController {
             user.getFullName(),
             user.getUsername(),
             user.getEmail(),
-            user.getPhone()
+            user.getPhone(),
+            role
         );
 
         return ResponseEntity.ok(userDTO);
