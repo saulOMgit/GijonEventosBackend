@@ -10,7 +10,7 @@ services:
       MYSQL_USER: appuser               # Usuario para la app
       MYSQL_PASSWORD: apppassword       # Contraseña para la app
     ports:
-      - "3306:3306"                     # Expone el puerto para acceso externo (ej: DBeaver)
+      - "3307:3306"                     # Expone el puerto para acceso externo (ej: DBeaver)
     volumes:
       - mysql-data:/var/lib/mysql       # Persistencia de datos
     healthcheck:
