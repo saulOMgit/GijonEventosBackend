@@ -31,7 +31,41 @@ public class SecurityConfiguration {
         this.jpaUserDetailsService = jpaUserDetailsService;
     }
 
-    @Bean
+     @Bean
+    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+            // Habilita CORS usando la configuración definida en corsConfigurationSource()
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            // Deshabilita CSRF completamente para facilitar desarrollo
+            .csrf(csrf -> csrf.disable())
+            // Permite que H2 console se muestre en iframe del mismo dominio
+            .headers(header -> header.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
+            .formLogin(form -> form.disable())
+            .logout(out -> out
+                .logoutUrl(endpoint + "/logout")
+                .invalidateHttpSession(true)
+                .deleteCookies("JSESSIONID"))
+            .authorizeHttpRequests(auth -> auth
+                // IMPORTANTE: Las rutas más específicas primero, anyRequest() SIEMPRE al final
+                .requestMatchers("/h2-console/**").permitAll()
+                .requestMatchers(endpoint + "/public").permitAll()
+                .requestMatchers(endpoint + "/register", endpoint + "/register/**").permitAll()
+                .requestMatchers(HttpMethod.GET, endpoint + "/private").hasRole("ADMIN")
+                .requestMatchers(endpoint + "/login").hasAnyRole("USER", "ADMIN")
+                .requestMatchers(HttpMethod.GET, endpoint + "/events/**").permitAll()
+                .requestMatchers(HttpMethod.POST, endpoint + "/events/**").authenticated()
+                .requestMatchers(HttpMethod.PUT, endpoint + "/events/**").authenticated()
+                .requestMatchers(HttpMethod.DELETE, endpoint + "/events/**").authenticated()
+                .anyRequest().authenticated())
+            .userDetailsService(jpaUserDetailsService)
+            .httpBasic(withDefaults())
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED));
+
+        return http.build();
+    }
+   /* Giaco
+     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             // Habilita CORS usando la configuración definida en corsConfigurationSource()
@@ -48,6 +82,9 @@ public class SecurityConfiguration {
                 .invalidateHttpSession(true)
                 .deleteCookies("JSESSIONID"))
             .authorizeHttpRequests(auth -> auth
+                //claude
+                .anyRequest().permitAll()
+                // fin claude
                 .requestMatchers("h2-console/**").permitAll()
                 .requestMatchers(endpoint + "/public").permitAll()
                 .requestMatchers(HttpMethod.GET, endpoint + "/private").hasRole("ADMIN")
@@ -60,7 +97,7 @@ public class SecurityConfiguration {
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED));
 
         return http.build();
-    }
+    } */
 
     // Password encoder para almacenar contraseñas de forma segura (BCrypt)
     @Bean
