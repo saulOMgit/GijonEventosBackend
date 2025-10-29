@@ -1,42 +1,52 @@
+version: '3.8'
 
 services:
   mysql-db:
     image: mysql:8.0
     container_name: gijoneventos-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword  # Cambia esto por una contraseña segura
-      MYSQL_DATABASE: gijoneventos_db    # Nombre de tu BD
-      MYSQL_USER: appuser               # Usuario para la app
-      MYSQL_PASSWORD: apppassword       # Contraseña para la app
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: gijoneventos_db
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: apppassword
     ports:
-      - "3307:3306"                     # Expone el puerto para acceso externo (ej: DBeaver)
+      - "3307:3306"
     volumes:
-      - mysql-data:/var/lib/mysql       # Persistencia de datos
+      - mysql-data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - gijoneventos-network
 
-  # Opcional: Contenedor para tu app Spring Boot (descomenta si quieres levantarlo junto con MySQL)
-  # backend-app:
-  #   image: maven:3.8.6-openjdk-21   # Usa una imagen con Maven y Java 21
-  #   container_name: gijoneventos-backend
-  #   working_dir: /app
-  #   volumes:
-  #     - .:/app                       # Monta tu código local
-  #   command: mvn spring-boot:run -Dspring-boot.run.profiles=mysql
-  #   ports:
-  #     - "8080:8080"
-  #   depends_on:
-  #     mysql-db:
-  #       condition: service_healthy
-  #   environment:
-  #     SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/gijoneventos_db?useSSL=false&allowPublicKeyRetrieval=true
-  #     SPRING_DATASOURCE_USERNAME: appuser
-  #     SPRING_DATASOURCE_PASSWORD: apppassword
+  backend-app:
+    image: maven:3.9-eclipse-temurin-21
+    container_name: gijoneventos-backend
+    working_dir: /app
+    volumes:
+      - .:/app
+      - maven-cache:/root/.m2  # Cachea dependencias Maven (acelera compilaciones)
+    command: mvn spring-boot:run -Dspring-boot.run.jvmArguments="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+    ports:
+      - "8080:8080"
+      - "5005:5005"  # Puerto para debugging remoto
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+    environment:
+      # Sobreescribe configuración para usar el contenedor MySQL
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/gijoneventos_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: appuser
+      SPRING_DATASOURCE_PASSWORD: apppassword
+      SPRING_PROFILES_ACTIVE: mysql
+      # Mejora el performance de Maven en Docker
+      MAVEN_OPTS: "-XX:+TieredCompilation -XX:TieredStopAtLevel=1"
+    networks:
+      - gijoneventos-network
+    restart: unless-stopped  # Reinicia automáticamente si falla
 
-  # Opcional: phpMyAdmin para ver tablas vía web (accede en http://localhost:8081)
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     container_name: gijoneventos-phpmyadmin
@@ -48,6 +58,13 @@ services:
       - "8081:80"
     depends_on:
       - mysql-db
+    networks:
+      - gijoneventos-network
 
 volumes:
   mysql-data:
+  maven-cache:  # Volumen para cachear dependencias de Maven
+
+networks:
+  gijoneventos-network:
+    driver: bridge
