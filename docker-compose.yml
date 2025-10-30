@@ -1,0 +1,68 @@
+services:
+  mysql-db:
+    image: mysql:8.0
+    container_name: gijoneventos-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: gijoneventos_db
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: apppassword
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gijoneventos-network
+
+  backend-app:
+    image: maven:3.9-eclipse-temurin-21
+    container_name: gijoneventos-backend
+    working_dir: /app
+    volumes:
+      - .:/app
+      - maven-cache:/root/.m2  # Cachea dependencias Maven (acelera compilaciones)
+    command: mvn spring-boot:run -Dspring-boot.run.jvmArguments="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+    ports:
+      - "8080:8080"
+      - "5005:5005"  # Puerto para debugging remoto
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+    environment:
+      # Sobreescribe configuración para usar el contenedor MySQL
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/gijoneventos_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: appuser
+      SPRING_DATASOURCE_PASSWORD: apppassword
+      SPRING_PROFILES_ACTIVE: mysql
+      # Mejora el performance de Maven en Docker
+      MAVEN_OPTS: "-XX:+TieredCompilation -XX:TieredStopAtLevel=1"
+    networks:
+      - gijoneventos-network
+    restart: unless-stopped  # Reinicia automáticamente si falla
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: gijoneventos-phpmyadmin
+    environment:
+      PMA_HOST: mysql-db
+      PMA_USER: root
+      PMA_PASSWORD: rootpassword
+    ports:
+      - "8081:80"
+    depends_on:
+      - mysql-db
+    networks:
+      - gijoneventos-network
+
+volumes:
+  mysql-data:
+  maven-cache:  # Volumen para cachear dependencias de Maven
+
+networks:
+  gijoneventos-network:
+    driver: bridge
