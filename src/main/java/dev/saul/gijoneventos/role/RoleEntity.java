@@ -34,6 +34,7 @@ public class RoleEntity {
     
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) @Column(name = "id_role")
     private Long id;
+     @Column(unique = true, nullable = false)  
     private String name;
 
     @JsonIgnore

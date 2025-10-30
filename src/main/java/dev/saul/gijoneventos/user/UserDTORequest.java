@@ -16,7 +16,6 @@ public class UserDTORequest {
     private String password;
     private String confirmPassword;
 
-    // TODO: Añadir campos de eventos cuando se requieran más adelante
     // private List<EventRequest> events;
 
 }

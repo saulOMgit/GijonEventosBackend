@@ -1,6 +1,6 @@
 /* Roles */
-INSERT INTO roles (id_role, name) VALUES (default, 'ROLE_ADMIN');
-INSERT INTO roles (id_role, name) VALUES (default, 'ROLE_USER');
+INSERT INTO roles (id_role, name) VALUES (1, 'ROLE_ADMIN');
+INSERT INTO roles (id_role, name) VALUES (2, 'ROLE_USER');
 
 /* Users */
 INSERT INTO users (id_user, full_name, username, email, phone, password) 
