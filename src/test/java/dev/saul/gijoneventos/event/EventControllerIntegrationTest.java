@@ -3,6 +3,7 @@ package dev.saul.gijoneventos.event;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.saul.gijoneventos.user.UserEntity;
 import dev.saul.gijoneventos.user.UserRepository;
+import jakarta.servlet.ServletException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -39,6 +41,8 @@ class EventControllerIntegrationTest {
     private UserRepository userRepository;
 
     private UserEntity testUser;
+    private UserEntity adminUser;
+    private UserEntity otherUser;
     private EventEntity testEvent;
 
     @BeforeEach
@@ -52,6 +56,24 @@ class EventControllerIntegrationTest {
             .username("testuser")
             .email("test@example.com")
             .phone("123456789")
+            .password("$2a$12$8LegtLQWe717tIPvZeivjuqKnaAs5.bm0Q05.5GrAmcKzXw2NjoUO")
+            .build());
+
+        // Create admin user
+        adminUser = userRepository.save(UserEntity.builder()
+            .fullName("Admin User")
+            .username("admin")
+            .email("admin@example.com")
+            .phone("111111111")
+            .password("$2a$12$8LegtLQWe717tIPvZeivjuqKnaAs5.bm0Q05.5GrAmcKzXw2NjoUO")
+            .build());
+
+        // Create other user
+        otherUser = userRepository.save(UserEntity.builder()
+            .fullName("Other User")
+            .username("otheruser")
+            .email("other@example.com")
+            .phone("222222222")
             .password("$2a$12$8LegtLQWe717tIPvZeivjuqKnaAs5.bm0Q05.5GrAmcKzXw2NjoUO")
             .build());
 
@@ -145,7 +167,7 @@ class EventControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("Should return 403 when non-organizer tries to update event")
+    @DisplayName("Should throw IllegalStateException when non-organizer tries to update event")
     @WithMockUser(username = "otheruser", roles = "USER")
     void testUpdateEvent_NotOrganizer() throws Exception {
         EventDTORequest updatedEvent = EventDTORequest.builder()
@@ -156,10 +178,14 @@ class EventControllerIntegrationTest {
             .maxAttendees(150)
             .build();
 
-        mockMvc.perform(put("/api/v1/events/" + testEvent.getId())
+        ServletException thrown = assertThrows(ServletException.class, () ->
+            mockMvc.perform(put("/api/v1/events/" + testEvent.getId())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(updatedEvent)))
-            .andExpect(status().is5xxServerError()); // Will throw IllegalStateException
+        );
+
+        assertInstanceOf(IllegalStateException.class, thrown.getCause());
+        assertEquals("Solo el organizador o un administrador puede editar el evento", thrown.getCause().getMessage());
     }
 
     @Test
