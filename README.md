@@ -161,9 +161,11 @@ The application comes with pre-configured test users:
 
 ```mermaid
 erDiagram
-    USERS ||--o{ EVENTS : "organizes (organizer_id)"
-    USERS }o--o{ EVENTS : "attends (event_attendees)"
-    USERS }o--o{ ROLES : "has (roles_users)"
+    USERS ||--o{ EVENTS : "organizes"
+    USERS ||--o{ EVENT_ATTENDEES : "attends"
+    EVENTS ||--o{ EVENT_ATTENDEES : "has"
+    USERS ||--o{ ROLES_USERS : "has"
+    ROLES ||--o{ ROLES_USERS : "assigned_to"
     
     USERS {
         bigint id_user PK "Auto-increment"
@@ -176,7 +178,7 @@ erDiagram
     
     ROLES {
         bigint id_role PK "Auto-increment"
-        varchar name UK "NOT NULL, UNIQUE (ROLE_ADMIN, ROLE_USER)"
+        varchar name UK "NOT NULL, UNIQUE"
     }
     
     EVENTS {
@@ -190,13 +192,13 @@ erDiagram
     }
     
     EVENT_ATTENDEES {
-        bigint event_id FK "References EVENTS(id_event)"
-        bigint user_id FK "References USERS(id_user)"
+        bigint event_id FK,PK "References EVENTS(id_event)"
+        bigint user_id FK,PK "References USERS(id_user)"
     }
     
     ROLES_USERS {
-        bigint user_id FK "References USERS(id_user)"
-        bigint role_id FK "References ROLES(id_role)"
+        bigint user_id FK,PK "References USERS(id_user)"
+        bigint role_id FK,PK "References ROLES(id_role)"
     }
 ```
 
