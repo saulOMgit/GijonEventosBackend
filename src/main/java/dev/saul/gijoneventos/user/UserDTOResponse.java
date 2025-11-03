@@ -16,6 +16,5 @@ public class UserDTOResponse {
     private String email;
     private String phone;
     private String role;
-    // TODO: Añadir información de eventos y citas cuando se requieran más adelante
     // private List<EventResponse> events;
 }
