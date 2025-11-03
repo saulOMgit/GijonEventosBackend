@@ -227,7 +227,6 @@ Base URL: `http://localhost:8080/api/v1`
 |--------|----------|-------------|--------------|---------------|
 | POST | `/register` | Register new user | `RegisterDTORequest` | No |
 | GET | `/login` | Login user (Basic Auth) | None (uses Basic Auth header) | Yes (Basic Auth) |
-| POST | `/logout` | Logout current user | None | Yes |
 
 **RegisterDTORequest:**
 ```json
